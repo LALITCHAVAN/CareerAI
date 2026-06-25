@@ -297,6 +297,15 @@ class Database {
     this.save();
   }
 
+  resetDatabase() {
+    this.data.resumes = [];
+    this.data.mockInterviews = [];
+    this.data.savedAnswers = [];
+    this.data.sessions = [];
+    this.data.questions = [...DEFAULT_QUESTIONS];
+    this.save();
+  }
+
   // --- Resumes ---
   getResumes() { return this.data.resumes; }
   getResumeById(id: string) { return this.data.resumes.find(r => r.id === id); }

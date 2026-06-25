@@ -1,15 +1,23 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize the Google GenAI client
+// Initialize the Google GenAI client lazily to prevent crashing on server startup
+// if the GEMINI_API_KEY environment variable is not defined or provided yet.
 // User-Agent must be 'aistudio-build' for telemetry as required by instructions
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
+let aiInstance: GoogleGenAI | null = null;
+
+function getAi(): GoogleGenAI {
+  if (!aiInstance) {
+    aiInstance = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
+  return aiInstance;
+}
 
 export interface ResumeAnalysisResult {
   score: number;
@@ -45,7 +53,7 @@ export interface InterviewEvaluationResult {
  */
 export async function analyzeResumeWithGemini(resumeText: string): Promise<ResumeAnalysisResult> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Analyze the following resume text and provide a comprehensive score (out of 100), high-fidelity professional feedback, detection of missing critical keywords for industry standards, actionable improvement suggestions, and alignment match percentages with various tech-industry roles. Ensure the response conforms exactly to the requested JSON schema.
       
@@ -126,7 +134,7 @@ export async function generateInterviewQuestionsWithGemini(
   experienceLevel: string
 ): Promise<GeneratedQuestion[]> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Generate 4 highly relevant, industry-grade interview questions for a candidate applying for a '${role}' role at the '${experienceLevel}' level.
       Provide exactly 4 questions:
@@ -211,7 +219,7 @@ export async function evaluateAnswerWithGemini(
   userAnswer: string
 ): Promise<AnswerEvaluationResult> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Evaluate the user's answer to the interview question below. Determine their correctness percentage (0-100), provide highly constructive feedback with strengths and weaknesses, and write a polished suggested perfect answer.
       
@@ -268,7 +276,7 @@ export async function evaluateFullMockInterviewWithGemini(
 ): Promise<InterviewEvaluationResult> {
   try {
     const qaString = qaPairs.map((p, i) => `Q${i + 1}: ${p.question}\nA: ${p.answer}`).join("\n\n");
-    const response = await ai.models.generateContent({
+    const response = await getAi().models.generateContent({
       model: "gemini-3.5-flash",
       contents: `Evaluate this complete mock interview for a '${role}' candidate at '${experienceLevel}' level. Calculate standard scores out of 100 for:
       1. Communication Score (clarity, structure, articulacy)

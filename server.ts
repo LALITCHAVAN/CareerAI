@@ -561,6 +561,25 @@ async function startServer() {
     });
   });
 
+  // Get all registered users (sanitized list)
+  app.get("/api/admin/users", protect, protectAdmin, (req: Request, res: Response) => {
+    const users = db.getUsers().map(u => {
+      const { passwordHash, ...safe } = u;
+      return safe;
+    });
+    res.json(users);
+  });
+
+  // Reset database & seed with starter blueprints
+  app.post("/api/admin/reset-seed", protect, protectAdmin, (req: Request, res: Response) => {
+    try {
+      db.resetDatabase();
+      res.json({ message: "Database successfully reset and seeded!" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Reset database failed." });
+    }
+  });
+
   // Serve static files and hook Vite middleware
   const distPath = path.join(process.cwd(), "dist");
   const isProd = process.env.NODE_ENV === "production" || fs.existsSync(distPath);

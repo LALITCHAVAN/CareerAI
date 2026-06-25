@@ -1,6 +1,37 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "../types.js";
 
+// Global fetch override to automatically attach the Authorization header if present in localStorage.
+// This is essential on mobile devices and inside iframes (such as the AI Studio live preview)
+// where third-party cookies are blocked by default.
+if (typeof window !== "undefined") {
+  const originalFetch = window.fetch;
+  window.fetch = async (input, init) => {
+    const token = localStorage.getItem("session_token");
+    if (token) {
+      init = init || {};
+      const headers = new Headers(init.headers || {});
+      if (!headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      init.headers = headers;
+    }
+    return originalFetch(input, init);
+  };
+}
+
+// Helper to safely parse JSON response. If the response is not JSON (e.g. HTML 404/500/crashed page),
+// it will throw a readable error instead of crashing with "Unexpected token < or T in JSON".
+async function safeJsonParse(res: Response) {
+  const contentType = res.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await res.text();
+    console.error("Non-JSON response from server:", text);
+    throw new Error(`The server returned an unexpected response format (not JSON). Status: ${res.status}`);
+  }
+  return res.json();
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -26,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         setUser(data.user);
       } else {
         setUser(null);
@@ -46,8 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       if (res.ok) {
+        if (data.token) {
+          localStorage.setItem("session_token", data.token);
+        }
         setUser(data.user);
         return { success: true };
       } else {
@@ -65,8 +99,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       if (res.ok) {
+        if (data.token) {
+          localStorage.setItem("session_token", data.token);
+        }
         setUser(data.user);
         return { success: true };
       } else {
@@ -83,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Logout request error:", e);
     } finally {
+      localStorage.removeItem("session_token");
       setUser(null);
     }
   };

@@ -3,19 +3,30 @@ import path from "path";
 import crypto from "crypto";
 
 const OLD_DB_FILE = path.join(process.cwd(), "data", "db.json");
-const DB_FILE = path.join(process.cwd(), "node_modules", "db.json");
+const WORKSPACE_DB_FILE = path.join(process.cwd(), "node_modules", "db.json");
+const DB_FILE = "/tmp/career_db.json";
 
-// Ensure the directory exists
+// Ensure the temp directory exists
 if (!fs.existsSync(path.dirname(DB_FILE))) {
   fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 }
 
-// Migrate old database if it exists and new one does not
-if (fs.existsSync(OLD_DB_FILE) && !fs.existsSync(DB_FILE)) {
-  try {
-    fs.copyFileSync(OLD_DB_FILE, DB_FILE);
-  } catch (e) {
-    console.error("Failed to migrate database file:", e);
+// Migrate from workspace DB to /tmp DB if /tmp DB doesn't exist yet
+if (!fs.existsSync(DB_FILE)) {
+  if (fs.existsSync(WORKSPACE_DB_FILE)) {
+    try {
+      fs.copyFileSync(WORKSPACE_DB_FILE, DB_FILE);
+      console.log("Migrated database from node_modules to /tmp/career_db.json");
+    } catch (e) {
+      console.error("Failed to migrate database from node_modules:", e);
+    }
+  } else if (fs.existsSync(OLD_DB_FILE)) {
+    try {
+      fs.copyFileSync(OLD_DB_FILE, DB_FILE);
+      console.log("Migrated database from data to /tmp/career_db.json");
+    } catch (e) {
+      console.error("Failed to migrate database from data:", e);
+    }
   }
 }
 

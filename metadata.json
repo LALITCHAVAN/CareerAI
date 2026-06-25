@@ -1,0 +1,6 @@
+{
+  "name": "CareerAI",
+  "description": "AI-Powered Interview Preparation Platform featuring mock interviews, resume builder, AI resume analysis, custom question generation, and analytics.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -5,7 +5,7 @@ import crypto from "crypto";
 const OLD_DB_FILE = path.join(process.cwd(), "data", "db.json");
 const DB_FILE = path.join(process.cwd(), "node_modules", "db.json");
 
-
+// Ensure the directory exists
 if (!fs.existsSync(path.dirname(DB_FILE))) {
   fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 }
@@ -216,15 +216,7 @@ class Database {
   }
 
   private load(): DatabaseSchema {
-    try {
-      if (fs.existsSync(DB_FILE)) {
-        const fileContent = fs.readFileSync(DB_FILE, "utf-8");
-        return JSON.parse(fileContent);
-      }
-    } catch (e) {
-      console.error("Error reading database file, resetting:", e);
-    }
-    return {
+    const defaultData: DatabaseSchema = {
       users: [],
       resumes: [],
       questions: [],
@@ -232,6 +224,27 @@ class Database {
       savedAnswers: [],
       sessions: []
     };
+
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        const fileContent = fs.readFileSync(DB_FILE, "utf-8");
+        const parsed = JSON.parse(fileContent);
+        // Safely merge with defaults to prevent missing fields in existing databases
+        return {
+          ...defaultData,
+          ...parsed,
+          users: parsed.users || [],
+          resumes: parsed.resumes || [],
+          questions: parsed.questions || [],
+          mockInterviews: parsed.mockInterviews || [],
+          savedAnswers: parsed.savedAnswers || [],
+          sessions: parsed.sessions || []
+        };
+      }
+    } catch (e) {
+      console.error("Error reading database file, resetting:", e);
+    }
+    return defaultData;
   }
 
   private save(): void {
